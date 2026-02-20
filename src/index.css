@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .risk-critical {
+    @apply bg-red-100 text-red-800 border border-red-200;
+  }
+  .risk-high {
+    @apply bg-orange-100 text-orange-800 border border-orange-200;
+  }
+  .risk-medium {
+    @apply bg-amber-100 text-amber-800 border border-amber-200;
+  }
+  .risk-low {
+    @apply bg-emerald-100 text-emerald-800 border border-emerald-200;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-slate-100;
+  }
+  .btn-primary {
+    @apply bg-brand-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-900 transition-colors;
+  }
+  .btn-outline {
+    @apply border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+
+/* Smooth transitions */
+* { transition-property: background-color, border-color, color, opacity, box-shadow; transition-duration: 150ms; }
+
+/* Agent pulse animation */
+@keyframes agentPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.agent-processing { animation: agentPulse 1.5s ease-in-out infinite; }
+
+/* Gauge animation */
+@keyframes fillGauge {
+  from { stroke-dashoffset: 251; }
+}
+.gauge-fill { animation: fillGauge 1s ease-out forwards; }
