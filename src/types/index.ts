@@ -1,7 +1,7 @@
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type ClaimStatus = 'new' | 'in_review' | 'ready_to_submit' | 'submitted' | 'approved' | 'denied';
 export type PersonaType = 'denial_analyst' | 'claims_intake' | 'medical_coder';
-export type PageType = 'login' | 'dashboard' | 'claims' | 'claim-detail' | 'settings' | 'analytics';
+export type PageType = 'login' | 'dashboard' | 'claims' | 'claim-detail' | 'settings';
 export type AgentStatus = 'pending' | 'processing' | 'completed' | 'error';
 export type ActionStatus = 'pending' | 'in_progress' | 'completed';
 

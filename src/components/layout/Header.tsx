@@ -8,7 +8,7 @@ const pageTitles: Record<PageType, string> = {
   claims: 'Claims Management',
   'claim-detail': 'Claim Detail',
   settings: 'Settings & Configuration',
-  analytics: 'Analytics',
+
 };
 
 export default function Header() {

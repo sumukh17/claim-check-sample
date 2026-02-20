@@ -29,8 +29,6 @@ function AppContent() {
         return <ClaimDetailPage />;
       case 'settings':
         return <SettingsPage />;
-      case 'analytics':
-        return <DenialAnalystDashboard />;
       default:
         return <DenialAnalystDashboard />;
     }
