@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import type { RiskLevel, AgentStatus, CorrectiveAction } from '../types';
 import {
@@ -118,6 +118,12 @@ export default function ClaimDetailPage() {
   const { selectedClaimId, claims, navigate } = useApp();
   const [activeTab, setActiveTab] = useState<TabId>('denial');
   const [showAllActions, setShowAllActions] = useState(false);
+  const tabsSectionRef = useRef<HTMLDivElement>(null);
+
+  const goToPredictionTab = () => {
+    setActiveTab('denial');
+    setTimeout(() => tabsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
 
   const claim = claims.find(c => c.id === selectedClaimId);
   if (!claim) return (
@@ -242,7 +248,7 @@ export default function ClaimDetailPage() {
                 <ExternalLink size={12} /> Payer Portal
               </button>
               <button
-                onClick={() => setActiveTab('denial')}
+                onClick={goToPredictionTab}
                 className="btn-primary text-xs py-1.5 flex items-center gap-1"
               >
                 <Bot size={12} /> View Prediction
@@ -253,7 +259,7 @@ export default function ClaimDetailPage() {
       </div>
 
       {/* Main layout: Tabs + Denial Prediction Sidebar */}
-      <div className="flex gap-5 items-start">
+      <div ref={tabsSectionRef} className="flex gap-5 items-start">
         {/* Left: Agent Tabs */}
         <div className="flex-1 min-w-0 space-y-4">
           {/* Tab navigation */}
