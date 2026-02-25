@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Denial Prediction — Knowledge Graph</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#020617;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;width:100vw}
+#header{position:absolute;top:0;left:0;right:0;z-index:100;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to bottom,rgba(15,23,42,0.97) 0%,transparent 100%)}
+#header h1{font-size:15px;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:8px;letter-spacing:-0.01em}
+.stats{display:flex;gap:20px;font-size:11px;color:#475569}
+.stat span{color:#818cf8;font-weight:700}
+#hint{position:absolute;top:56px;left:50%;transform:translateX(-50%);background:rgba(30,41,59,0.85);border:1px solid #334155;border-radius:8px;padding:5px 14px;font-size:11px;color:#94a3b8;z-index:50;pointer-events:none;transition:opacity 0.4s}
+#legend{position:absolute;bottom:16px;left:16px;z-index:100;background:rgba(15,23,42,0.93);border:1px solid #1e293b;border-radius:10px;padding:12px 14px;min-width:170px}
+#legend h3{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px}
+.li{display:flex;align-items:center;gap:7px;margin-bottom:3px;font-size:11px;color:#94a3b8}
+.ld{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.lsep{margin-top:8px;padding-top:8px;border-top:1px solid #1e293b}
+#panel{position:absolute;top:56px;right:16px;z-index:100;width:272px;background:rgba(15,23,42,0.97);border:1px solid #1e293b;border-radius:10px;padding:14px 16px;font-size:12px;display:none}
+#panel .pid{font-size:10px;color:#475569;font-family:monospace;letter-spacing:0.05em}
+#panel .pname{font-size:13px;font-weight:700;color:#f1f5f9;margin:4px 0 6px;line-height:1.3}
+#panel .pcat{font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;display:inline-block;margin-bottom:10px}
+.prow{display:flex;justify-content:space-between;gap:12px;margin-bottom:4px}
+.plabel{color:#64748b;font-size:11px}
+.pval{color:#e2e8f0;font-size:11px;font-weight:600;text-align:right}
+.rbar{margin-top:8px;background:#1e293b;border-radius:99px;height:4px;overflow:hidden}
+.rfill{height:4px;border-radius:99px;transition:width 0.4s}
+.paction{margin-top:10px;padding-top:10px;border-top:1px solid #1e293b;color:#94a3b8;font-size:11px;line-height:1.55}
+.paction strong{color:#818cf8}
+.pprops{margin-top:10px;padding-top:10px;border-top:1px solid #1e293b}
+.pprops h4{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px}
+.pprow{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;font-size:10.5px}
+.pprow span:first-child{color:#64748b}
+.pprow span:last-child{color:#e2e8f0;font-weight:500;text-align:right}
+#controls{position:absolute;bottom:16px;right:16px;z-index:100;display:flex;gap:8px}
+.btn{background:rgba(30,41,59,0.9);border:1px solid #334155;color:#94a3b8;padding:7px 13px;border-radius:8px;font-size:11px;cursor:pointer;transition:all 0.15s}
+.btn:hover{background:#1e293b;color:#e2e8f0;border-color:#475569}
+#search-box{position:absolute;top:56px;left:16px;z-index:100;display:flex;gap:6px}
+#search{background:rgba(15,23,42,0.93);border:1px solid #334155;color:#e2e8f0;padding:5px 11px;border-radius:8px;font-size:11px;width:200px;outline:none}
+#search:focus{border-color:#818cf8}
+#search::placeholder{color:#475569}
+svg{display:block;cursor:grab}
+svg:active{cursor:grabbing}
+.link{stroke-opacity:0.5}
+.cat-link{stroke-width:1.5}
+.prop-link{stroke-width:1;stroke-dasharray:4,3;stroke-opacity:0.35}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.2">
+      <circle cx="12" cy="12" r="2.5"/>
+      <circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/>
+      <line x1="6" y1="6" x2="10" y2="11"/><line x1="18" y1="6" x2="14" y2="11"/><line x1="6" y1="18" x2="10" y2="13"/><line x1="18" y1="18" x2="14" y2="13"/>
+    </svg>
+    Denial Prediction — Knowledge Graph
+  </h1>
+  <div class="stats">
+    <div class="stat"><span>54</span> Patterns</div>
+    <div class="stat"><span>12</span> Categories</div>
+    <div class="stat"><span id="exp-count">0</span> Expanded</div>
+    <div class="stat" id="total-prop-stat"><span id="prop-count">0</span> Properties visible</div>
+  </div>
+</div>
+
+<div id="hint">Click a pattern node to expand its properties &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Drag to pan</div>
+
+<div id="search-box">
+  <input id="search" type="text" placeholder="Search pattern…" oninput="onSearch(this.value)"/>
+</div>
+
+<div id="legend">
+  <h3>Categories</h3>
+  <div id="leg-cats"></div>
+  <div class="lsep">
+    <div class="li"><div class="ld" style="width:22px;height:22px;background:transparent;border:2px solid #818cf8"></div>Category node</div>
+    <div class="li"><div class="ld" style="width:14px;height:14px;background:#334155"></div>Pattern node</div>
+    <div class="li"><div class="ld" style="width:8px;height:8px;background:#1e293b;border:1px solid #475569"></div>Property node</div>
+  </div>
+</div>
+
+<div id="panel">
+  <div class="pid" id="p-id"></div>
+  <div class="pname" id="p-name"></div>
+  <div id="p-cat" class="pcat"></div>
+  <div class="prow"><span class="plabel">Denial Probability</span><span class="pval" id="p-prob"></span></div>
+  <div class="prow"><span class="plabel">Confidence</span><span class="pval" id="p-conf"></span></div>
+  <div class="prow"><span class="plabel">Sample Size</span><span class="pval" id="p-n"></span></div>
+  <div class="prow"><span class="plabel">CARC Code</span><span class="pval" id="p-carc"></span></div>
+  <div class="rbar"><div class="rfill" id="p-bar"></div></div>
+  <div class="paction"><strong>Recommended Action:</strong><br/><span id="p-action"></span></div>
+  <div class="pprops"><h4>Pattern Conditions</h4><div id="p-props"></div></div>
+</div>
+
+<div id="controls">
+  <button class="btn" onclick="collapseAll()">Collapse All</button>
+  <button class="btn" onclick="expandAll()">Expand All</button>
+  <button class="btn" onclick="resetView()">Reset View</button>
+</div>
+
+<svg id="graph"></svg>
+
+<script>
+// ── Category config ──────────────────────────────────────────────
+const CAT = {
+  PRIOR_AUTHORIZATION:      { label:'Prior Auth',     color:'#ef4444', short:'PA'  },
+  ELIGIBILITY:              { label:'Eligibility',    color:'#f97316', short:'EL'  },
+  CODING:                   { label:'Coding',         color:'#f59e0b', short:'CD'  },
+  COORDINATION_OF_BENEFITS: { label:'COB',            color:'#3b82f6', short:'COB' },
+  TIMELY_FILING:            { label:'Timely Filing',  color:'#94a3b8', short:'TF'  },
+  MEDICAL_NECESSITY:        { label:'Med Necessity',  color:'#a855f7', short:'MN'  },
+  PROVIDER:                 { label:'Provider',       color:'#06b6d4', short:'PR'  },
+  DUPLICATE_CLAIM:          { label:'Duplicate',      color:'#6b7280', short:'DUP' },
+  UNDERPAYMENT:             { label:'Underpayment',   color:'#22c55e', short:'PAY' },
+  SPECIALTY_SPECIFIC:       { label:'Specialty',      color:'#6366f1', short:'SP'  },
+  PAYER_SPECIFIC:           { label:'Payer-Specific', color:'#14b8a6', short:'PY'  },
+  MULTI_FACTOR:             { label:'Multi-Factor',   color:'#ec4899', short:'MF'  },
+};
+
+// ── Pattern data ─────────────────────────────────────────────────
+const PATTERNS = [
+  {id:'PA_001', name:'MRI_No_Auth_Highmark',          cat:'PRIOR_AUTHORIZATION',      prob:0.94, conf:0.91, n:1245,  carc:'197', action:'Obtain prior authorization before service',                    props:{Payer:'Highmark',CPT:'70553',Diagnosis:'G43.909',Service:'Radiology',Auth_Status:'Not Obtained',POS:'22'}},
+  {id:'PA_002', name:'CT_Scan_Auth_Expired_BCBS',     cat:'PRIOR_AUTHORIZATION',      prob:0.89, conf:0.88, n:892,   carc:'197', action:'Request retro-authorization or auth extension',                props:{Payer:'BCBS',CPT:'74176',Diagnosis:'R10.9',Service:'Radiology',Auth_Status:'Expired',Days_Past:'15'}},
+  {id:'PA_003', name:'Surgery_Auth_CPT_Mismatch_Aetna',cat:'PRIOR_AUTHORIZATION',     prob:0.87, conf:0.85, n:567,   carc:'197', action:'Request auth amendment or appeal with clinical justification', props:{Payer:'Aetna',CPT:'27447',Auth_CPT:'27446',Diagnosis:'M17.11',Service:'Surgery',Auth_Status:'Mismatch'}},
+  {id:'PA_004', name:'DME_No_Auth_Medicare',           cat:'PRIOR_AUTHORIZATION',      prob:0.92, conf:0.90, n:2341,  carc:'197', action:'Complete Medicare prior auth process',                         props:{Payer:'Medicare',CPT:'E0601',Diagnosis:'G47.33',Service:'DME',Auth_Status:'Not Obtained',Provider:'DME Supplier'}},
+  {id:'PA_005', name:'Infusion_Auth_DOS_Outside_Window',cat:'PRIOR_AUTHORIZATION',     prob:0.85, conf:0.82, n:723,   carc:'197', action:'Request DOS extension on authorization',                       props:{Payer:'UHC',CPT:'96413',Diagnosis:'C50.911',Service:'Infusion',Auth_Status:'Outside Window'}},
+  {id:'PA_006', name:'Genetic_Testing_No_Auth_Cigna',  cat:'PRIOR_AUTHORIZATION',      prob:0.96, conf:0.93, n:456,   carc:'197', action:'Obtain genetic testing prior authorization',                   props:{Payer:'Cigna',CPT:'81479',Diagnosis:'Z15.01',Service:'Lab',Auth_Status:'Not Obtained',Test:'Genetic'}},
+
+  {id:'ELIG_001', name:'Coverage_Termed_30Days_Highmark', cat:'ELIGIBILITY', prob:0.98, conf:0.96, n:3421, carc:'27',  action:'Verify eligibility before service; identify alternate coverage', props:{Payer:'Highmark',CPT:'99213',Coverage:'Terminated',Days_Since_Term:'30',Verification:'Not Done'}},
+  {id:'ELIG_002', name:'Invalid_Member_ID_BCBS',          cat:'ELIGIBILITY', prob:0.91, conf:0.89, n:1876, carc:'58',  action:'Correct member ID format per payer requirements',               props:{Payer:'BCBS',CPT:'99214',Member_ID:'Invalid',ID_Length:'Incorrect'}},
+  {id:'ELIG_003', name:'Group_Number_Missing_Aetna',      cat:'ELIGIBILITY', prob:0.78, conf:0.75, n:2134, carc:'A1',  action:'Add group number from insurance card',                          props:{Payer:'Aetna',CPT:'99215',Group_Number:'Missing',Employer:'Large Group'}},
+  {id:'ELIG_004', name:'Dependent_Over_Age_Limit',        cat:'ELIGIBILITY', prob:0.95, conf:0.93, n:567,  carc:'27',  action:'Verify dependent eligibility; bill alternate coverage',         props:{Payer:'UHC',CPT:'99213',Patient_Age:'27',Relationship:'Child',Student:'No'}},
+  {id:'ELIG_005', name:'Retroactive_Termination_Medicaid',cat:'ELIGIBILITY', prob:0.97, conf:0.95, n:4532, carc:'27',  action:'Check Medicaid reinstatement; bill patient or charity',         props:{Payer:'Medicaid',CPT:'99214',Coverage:'Retro Termed',Redetermination:'Failed'}},
+
+  {id:'CODE_001', name:'Dx_CPT_Mismatch_Knee_MRI',      cat:'CODING', prob:0.88, conf:0.92, n:3456, carc:'11',  action:'Correct diagnosis to support knee imaging',             props:{Payer:'ALL',CPT:'73721',Diagnosis:'M54.5',Body_CPT:'Knee',Body_DX:'Back',Service:'Radiology'}},
+  {id:'CODE_002', name:'LCD_Not_Met_Spine_Surgery',     cat:'CODING', prob:0.91, conf:0.89, n:892,  carc:'50',  action:'Document 6+ weeks conservative treatment per LCD',      props:{Payer:'Medicare',CPT:'22853',Diagnosis:'M47.816',LCD_Met:'No',Conservative_Days:'30'}},
+  {id:'CODE_003', name:'Unbundling_Edit_Surgery',       cat:'CODING', prob:0.85, conf:0.88, n:1567, carc:'97',  action:'Remove unbundled code or add modifier 59/XE',           props:{Payer:'ALL',CPT:'29881',Additional_CPT:'29877',Modifier:'None',CCI_Edit:'Col1/Col2'}},
+  {id:'CODE_004', name:'MUE_Exceeded_Injections',       cat:'CODING', prob:0.93, conf:0.91, n:2341, carc:'151', action:'Reduce units to MUE limit or document necessity',        props:{Payer:'ALL',CPT:'64483',Units_Billed:'4',MUE_Limit:'2',Modifier:'None'}},
+  {id:'CODE_005', name:'Invalid_Modifier_Combination', cat:'CODING', prob:0.72, conf:0.70, n:1234, carc:'4',   action:'Review modifier usage; remove invalid combination',     props:{Payer:'ALL',CPT:'99213',Modifier_1:'25',Modifier_2:'59',Same_DOS:'Yes'}},
+  {id:'CODE_006', name:'Truncated_ICD10_Code',         cat:'CODING', prob:0.89, conf:0.91, n:5678, carc:'A1',  action:'Code to highest specificity per documentation',         props:{Payer:'ALL',Diagnosis:'M54',Specificity:'3-digit',Required:'5-digit',CPT:'99214'}},
+  {id:'CODE_007', name:'Gender_Specific_Proc_Mismatch',cat:'CODING', prob:0.99, conf:0.98, n:234,  carc:'4',   action:'Verify patient gender; correct CPT or demographics',    props:{Payer:'ALL',CPT:'55700',Patient_Gender:'Female',Proc_Gender:'Male'}},
+  {id:'CODE_008', name:'Age_Specific_Code_Violation',  cat:'CODING', prob:0.97, conf:0.96, n:567,  carc:'4',   action:'Use age-appropriate preventive visit code',             props:{Payer:'ALL',CPT:'99392',Patient_Age:'45',Code_Range:'1-4',Service:'Preventive'}},
+
+  {id:'COB_001', name:'Primary_Payer_Not_Billed',    cat:'COORDINATION_OF_BENEFITS', prob:0.94, conf:0.92, n:2341, carc:'22', action:'Bill primary payer first; attach EOB to secondary', props:{Payer:'BCBS',Level:'Secondary',Primary:'Aetna',Primary_EOB:'Not Attached',CPT:'99214'}},
+  {id:'COB_002', name:'Medicare_Secondary_No_MSP',   cat:'COORDINATION_OF_BENEFITS', prob:0.88, conf:0.85, n:1567, carc:'22', action:'Complete MSP questionnaire; verify COB order',    props:{Payer:'Medicare',Level:'Secondary',Primary:'Employer Group',MSP:'Incomplete'}},
+  {id:'COB_003', name:'Workers_Comp_Primary',        cat:'COORDINATION_OF_BENEFITS', prob:0.91, conf:0.89, n:892,  carc:'22', action:'Bill Workers Comp as primary payer',              props:{Payer:'BCBS',Injury:'Work-related',Workers_Comp:'Not Billed',CPT:'99203'}},
+  {id:'COB_004', name:'Auto_Accident_Primary',       cat:'COORDINATION_OF_BENEFITS', prob:0.89, conf:0.87, n:567,  carc:'22', action:'Bill auto insurance as primary payer',            props:{Payer:'UHC',Injury:'Auto Accident',Auto_Ins:'Not Billed',CPT:'99284'}},
+
+  {id:'TF_001', name:'Medicare_365_Days_Exceeded',  cat:'TIMELY_FILING', prob:0.99, conf:0.98, n:1234, carc:'29', action:'Submit timely filing appeal with extenuating circumstances', props:{Payer:'Medicare',Days_From_DOS:'380',Filing_Limit:'365',CPT:'99214'}},
+  {id:'TF_002', name:'Commercial_90_Days_Exceeded', cat:'TIMELY_FILING', prob:0.97, conf:0.95, n:2567, carc:'29', action:'Appeal with proof of timely submission',                   props:{Payer:'Aetna',Days_From_DOS:'120',Filing_Limit:'90',CPT:'99213'}},
+  {id:'TF_003', name:'Corrected_Claim_Late_BCBS',   cat:'TIMELY_FILING', prob:0.92, conf:0.90, n:789,  carc:'29', action:'Appeal with documentation of timely original submission', props:{Payer:'BCBS',Claim_Type:'Corrected',Days:'95 from original',Limit:'90 days'}},
+
+  {id:'MN_001', name:'Cosmetic_Procedure_Denial',      cat:'MEDICAL_NECESSITY', prob:0.86, conf:0.83, n:456,  carc:'50',  action:'Document functional impairment; obtain MN letter',            props:{Payer:'ALL',CPT:'15824',Diagnosis:'H02.839',Cosmetic:'Possible',Functional:'Not Documented'}},
+  {id:'MN_002', name:'Experimental_Treatment_Oncology',cat:'MEDICAL_NECESSITY', prob:0.78, conf:0.75, n:234,  carc:'96',  action:'Submit appeal with peer-reviewed literature',                 props:{Payer:'UHC',CPT:'96401',Drug:'J9999',Diagnosis:'C34.90',FDA:'Off-label'}},
+  {id:'MN_003', name:'Frequency_Exceeded_PT',          cat:'MEDICAL_NECESSITY', prob:0.82, conf:0.80, n:1678, carc:'150', action:'Request MN exception with progress documentation',             props:{Payer:'Cigna',CPT:'97110',Visits_YTD:'45',Annual_Limit:'30',Diagnosis:'M54.5'}},
+  {id:'MN_004', name:'Investigational_Device',         cat:'MEDICAL_NECESSITY', prob:0.91, conf:0.88, n:123,  carc:'96',  action:'Submit appeal with clinical trial data and justification',    props:{Payer:'BCBS',CPT:'22867',Device:'Investigational',Diagnosis:'M47.816'}},
+
+  {id:'PROV_001', name:'Out_Of_Network_No_Auth',     cat:'PROVIDER', prob:0.75, conf:0.72, n:3456, carc:'B7',  action:'Obtain OON authorization or refer in-network',         props:{Payer:'Aetna',Network:'Out-of-Network',OON_Auth:'Not Obtained',CPT:'99214'}},
+  {id:'PROV_002', name:'Rendering_NPI_Not_Enrolled', cat:'PROVIDER', prob:0.96, conf:0.94, n:892,  carc:'B16', action:'Complete provider enrollment; bill under supervising MD', props:{Payer:'Medicare',NPI_Status:'Not Enrolled',Enrollment:'Pending',CPT:'99213'}},
+  {id:'PROV_003', name:'Taxonomy_Mismatch',          cat:'PROVIDER', prob:0.71, conf:0.68, n:567,  carc:'B18', action:'Update taxonomy code or verify provider billing rights',  props:{Payer:'Medicaid',Prov_Taxonomy:'207Q00000X',Svc_Taxonomy:'208000000X',CPT:'99214'}},
+  {id:'PROV_004', name:'Locum_Tenens_No_Modifier',  cat:'PROVIDER', prob:0.88, conf:0.85, n:345,  carc:'4',   action:'Add modifier Q6 for locum tenens services',              props:{Payer:'Medicare',Provider_Type:'Locum Tenens',Modifier_Q6:'Missing',CPT:'99213'}},
+
+  {id:'DUP_001', name:'Same_DOS_Same_CPT',         cat:'DUPLICATE_CLAIM', prob:0.99, conf:0.98, n:4567, carc:'18', action:'Verify duplicate; add modifier if different service',    props:{Payer:'ALL',CPT:'99214',DOS_Match:'Exact',CPT_Match:'Exact',Prior_Claim:'Paid'}},
+  {id:'DUP_002', name:'Resubmission_No_ICN',       cat:'DUPLICATE_CLAIM', prob:0.85, conf:0.82, n:2341, carc:'18', action:'Add original ICN to corrected claim submission',         props:{Payer:'ALL',CPT:'99213',Claim_Type:'Resubmission',Original_ICN:'Missing',Freq_Code:'7'}},
+  {id:'DUP_003', name:'Split_Bill_Same_Encounter', cat:'DUPLICATE_CLAIM', prob:0.45, conf:0.60, n:1234, carc:'18', action:'Verify facility/professional split billing appropriateness', props:{Payer:'Highmark',Facility:'Submitted',Professional:'Submitted',Same_DOS:'Yes'}},
+
+  {id:'PAY_001', name:'Below_Contracted_Rate',               cat:'UNDERPAYMENT', prob:0.15, conf:0.85, n:5678, carc:'45', action:'Submit underpayment dispute with contract reference', props:{Payer:'BCBS',CPT:'99214',Contracted:'$185',Paid:'$145',Variance:'22%'}},
+  {id:'PAY_002', name:'Multiple_Procedure_Reduction_Excessive',cat:'UNDERPAYMENT', prob:0.12, conf:0.78, n:892,  carc:'45', action:'Dispute excessive multiple procedure reduction',   props:{Payer:'Aetna',CPT:'29881',Procs:'2 additional',Reduction:'75%',Expected:'50%'}},
+  {id:'PAY_003', name:'Modifier_50_Single_Unit',             cat:'UNDERPAYMENT', prob:0.18, conf:0.82, n:567,  carc:'45', action:'Appeal for bilateral payment per contract terms',  props:{Payer:'UHC',CPT:'64483',Modifier:'50',Units_Paid:'1',Units_Expected:'2'}},
+
+  {id:'SPEC_001', name:'Chemo_Admin_Sequence_Error', cat:'SPECIALTY_SPECIFIC', prob:0.79, conf:0.77, n:456,  carc:'4',   action:'Correct chemotherapy administration code sequence',          props:{Payer:'ALL',CPT:'96413',Add_CPT:'96415',Sequence:'Incorrect',Initial_Admin:'Missing'}},
+  {id:'SPEC_002', name:'Dialysis_Composite_Rate',    cat:'SPECIALTY_SPECIFIC', prob:0.94, conf:0.92, n:789,  carc:'97',  action:'Bill under composite rate; do not unbundle',               props:{Payer:'Medicare',CPT:'90960',Composite_Rate:'Applicable',Sep_Billing:'Attempted'}},
+  {id:'SPEC_003', name:'Mental_Health_Visit_Limit',  cat:'SPECIALTY_SPECIFIC', prob:0.88, conf:0.85, n:1234, carc:'150', action:'Request MN exception for additional visits',               props:{Payer:'Cigna',CPT:'90837',Visits_YTD:'28',Annual_Limit:'26',Diagnosis:'F32.1'}},
+  {id:'SPEC_004', name:'ASC_Facility_Fee_Denied',    cat:'SPECIALTY_SPECIFIC', prob:0.72, conf:0.70, n:567,  carc:'B7',  action:'Verify ASC approval for procedure; appeal if appropriate',  props:{Payer:'Aetna',CPT:'29881',POS:'24',Facility_Fee:'Billed',ASC_Approved:'No'}},
+  {id:'SPEC_005', name:'Global_Period_Violation',    cat:'SPECIALTY_SPECIFIC', prob:0.91, conf:0.89, n:892,  carc:'4',   action:'Add modifier 24 if unrelated E&M; wait for global period end', props:{Payer:'Medicare',CPT:'99213',Prior_Surgery:'27447',Days_Post:'45',Global_Period:'90 days'}},
+
+  {id:'PAYER_001', name:'Highmark_Prior_Auth_Radiology',cat:'PAYER_SPECIFIC', prob:0.93, conf:0.91, n:2341, carc:'197', action:'Obtain eviCore authorization for Highmark radiology',         props:{Payer:'Highmark',CPT:'70553',Service:'Radiology',Auth_Vendor:'eviCore',Auth_Status:'Not Obtained'}},
+  {id:'PAYER_002', name:'UHC_Optum_Auth_Required',      cat:'PAYER_SPECIFIC', prob:0.95, conf:0.93, n:1567, carc:'197', action:'Obtain Optum authorization for UHC surgical procedures',      props:{Payer:'UHC',CPT:'27447',Service:'Surgery',Auth_Vendor:'Optum',Auth_Status:'Not Obtained'}},
+  {id:'PAYER_003', name:'Aetna_Precert_Imaging',        cat:'PAYER_SPECIFIC', prob:0.91, conf:0.89, n:1892, carc:'197', action:'Obtain AIM Specialty Health authorization for Aetna imaging', props:{Payer:'Aetna',CPT:'74176',Service:'Radiology',Auth_Vendor:'AIM',Auth_Status:'Not Obtained'}},
+  {id:'PAYER_004', name:'Medicare_ABN_Not_Signed',      cat:'PAYER_SPECIFIC', prob:0.89, conf:0.87, n:3456, carc:'50',  action:'Obtain signed ABN before service; bill with GA modifier',    props:{Payer:'Medicare',CPT:'82728',Service:'Laboratory',Freq:'Exceeded',ABN:'Not Signed'}},
+  {id:'PAYER_005', name:'Medicaid_Referral_Missing',    cat:'PAYER_SPECIFIC', prob:0.86, conf:0.84, n:2567, carc:'4',   action:'Obtain PCP referral; update claim with referral number',     props:{Payer:'Medicaid',CPT:'99214',Provider:'Specialist',Referral:'Not Obtained',PCP_Required:'Yes'}},
+
+  {id:'COMPLEX_001', name:'Auth_Coding_Eligibility_Combined', cat:'MULTI_FACTOR', prob:0.82, conf:0.78, n:234, carc:'197', action:'Verify eligibility; request auth CPT amendment; correct coding', props:{Payer:'BCBS',CPT:'27447',Auth_CPT:'27446',Diagnosis:'M17.0',Coverage:'Pending',Network:'In-Network'}},
+  {id:'COMPLEX_002', name:'Secondary_Timely_Filing_COB',       cat:'MULTI_FACTOR', prob:0.78, conf:0.75, n:567, carc:'29',  action:'Submit timely filing appeal with primary EOB date documentation', props:{Payer:'Aetna',Level:'Secondary',Primary:'Medicare',Primary_Paid:'90 days ago',Limit:'90 days'}},
+  {id:'COMPLEX_003', name:'OON_No_Auth_High_Cost',             cat:'MULTI_FACTOR', prob:0.91, conf:0.88, n:123, carc:'B7',  action:'Obtain retrospective OON authorization; prepare appeal',          props:{Payer:'UHC',CPT:'22853',Network:'Out-of-Network',Amount:'$35,000',OON_Auth:'Not Obtained'}},
+  {id:'COMPLEX_004', name:'Retro_Elig_Term_Auth_Obtained',     cat:'MULTI_FACTOR', prob:0.96, conf:0.94, n:345, carc:'27',  action:'Bill patient or identify alternate coverage; auth void due to term', props:{Payer:'Cigna',CPT:'70553',Auth_Status:'Obtained',Coverage:'Retro Termed',DOS:'After Term'}},
+];
+
+// ── Build legend ─────────────────────────────────────────────────
+const legDiv = document.getElementById('leg-cats');
+Object.entries(CAT).forEach(([k,v]) => {
+  const d = document.createElement('div');
+  d.className = 'li';
+  d.innerHTML = `<div class="ld" style="background:${v.color}88;border:1px solid ${v.color}"></div>${v.label}`;
+  legDiv.appendChild(d);
+});
+
+// ── SVG setup ────────────────────────────────────────────────────
+const W = window.innerWidth, H = window.innerHeight;
+const svg = d3.select('#graph').attr('width', W).attr('height', H);
+const gMain = svg.append('g');
+
+const zoom = d3.zoom().scaleExtent([0.08, 5])
+  .on('zoom', e => gMain.attr('transform', e.transform));
+svg.call(zoom);
+
+// ── Build nodes ──────────────────────────────────────────────────
+const catKeys = Object.keys(CAT);
+const catNodes = catKeys.map(k => ({
+  id: `cat_${k}`, type: 'category', catKey: k,
+  label: CAT[k].label, color: CAT[k].color, r: 32,
+}));
+
+const patNodes = PATTERNS.map(p => ({
+  id: `pat_${p.id}`, type: 'pattern', patId: p.id,
+  data: p, catKey: p.cat, color: CAT[p.cat].color,
+  label: p.name.replace(/_/g,' '), r: 14,
+  expanded: false,
+}));
+
+// Property nodes per pattern (built once, added/removed from simulation)
+const propNodesByPat = {};
+PATTERNS.forEach(p => {
+  const entries = Object.entries(p.props);
+  propNodesByPat[p.id] = entries.map(([k,v], i) => ({
+    id: `prop_${p.id}_${i}`, type: 'property', patId: p.id,
+    catKey: p.cat, color: CAT[p.cat].color,
+    key: k, val: v, label: `${k.replace(/_/g,' ')}: ${v}`, r: 7,
+    x: 0, y: 0,
+  }));
+});
+
+// ── D3 simulation ────────────────────────────────────────────────
+let simNodes = [...catNodes, ...patNodes];
+let simLinks = PATTERNS.map(p => ({
+  source: `cat_${p.cat}`, target: `pat_${p.id}`, type: 'cat', catKey: p.cat
+}));
+
+const simulation = d3.forceSimulation()
+  .force('link', d3.forceLink().id(d => d.id)
+    .distance(d => d.type === 'cat' ? 145 : 60)
+    .strength(d => d.type === 'cat' ? 0.25 : 0.9))
+  .force('charge', d3.forceManyBody()
+    .strength(d => d.type === 'category' ? -1400 : d.type === 'pattern' ? -200 : -30))
+  .force('center', d3.forceCenter(W/2, H/2).strength(0.04))
+  .force('collision', d3.forceCollide().radius(d =>
+    d.type === 'category' ? 46 : d.type === 'pattern' ? 22 : 14))
+  .alphaDecay(0.018);
+
+// ── Render layers ────────────────────────────────────────────────
+const gLinks = gMain.append('g');
+const gNodes = gMain.append('g');
+
+// ── Utility ──────────────────────────────────────────────────────
+function riskColor(p) {
+  if (p >= 0.9) return '#f87171';
+  if (p >= 0.7) return '#fb923c';
+  if (p >= 0.5) return '#fbbf24';
+  return '#4ade80';
+}
+
+function wordWrap(text, maxChars) {
+  if (text.length <= maxChars) return [text];
+  const words = text.split(' ');
+  const lines = []; let cur = '';
+  words.forEach(w => {
+    if ((cur + ' ' + w).trim().length > maxChars) { lines.push(cur.trim()); cur = w; }
+    else cur = (cur + ' ' + w).trim();
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// ── Draw functions ───────────────────────────────────────────────
+let linkSel = gLinks.selectAll('line');
+let nodeSel = gNodes.selectAll('g.node');
+
+function drawLinks() {
+  linkSel = gLinks.selectAll('line')
+    .data(simLinks, d => {
+      const s = typeof d.source === 'object' ? d.source.id : d.source;
+      const t = typeof d.target === 'object' ? d.target.id : d.target;
+      return `${s}→${t}`;
+    });
+  linkSel.exit().remove();
+  const enter = linkSel.enter().append('line')
+    .attr('class', d => `link ${d.type === 'cat' ? 'cat-link' : 'prop-link'}`)
+    .attr('stroke', d => CAT[d.catKey].color)
+    .style('opacity', 0);
+  enter.transition().duration(250).style('opacity', null);
+  linkSel = enter.merge(linkSel);
+}
+
+function drawNodes() {
+  nodeSel = gNodes.selectAll('g.node')
+    .data(simNodes, d => d.id);
+
+  nodeSel.exit()
+    .transition().duration(200).style('opacity', 0).remove();
+
+  const enter = nodeSel.enter().append('g')
+    .attr('class', d => `node ${d.type}`)
+    .style('opacity', 0)
+    .call(d3.drag()
+      .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.25).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on('end',   (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
+    .on('click', (e, d) => { e.stopPropagation(); if (d.type === 'pattern') togglePattern(d); })
+    .on('mouseover', (e, d) => showTooltip(e, d))
+    .on('mousemove', (e) => moveTooltip(e))
+    .on('mouseout', hideTooltip);
+
+  enter.transition().duration(250).style('opacity', 1);
+
+  // Category nodes: large ring + label
+  const catEnter = enter.filter(d => d.type === 'category');
+  catEnter.append('circle')
+    .attr('r', d => d.r)
+    .attr('fill', d => d.color + '18')
+    .attr('stroke', d => d.color)
+    .attr('stroke-width', 2.5);
+  catEnter.each(function(d) {
+    const g = d3.select(this);
+    const lines = d.label.split(' ');
+    const text = g.append('text').attr('text-anchor','middle').attr('dominant-baseline','middle');
+    if (lines.length === 1) {
+      text.text(d.label).attr('font-size','11px').attr('font-weight','700').attr('fill', d.color);
+    } else {
+      text.attr('fill', d.color).attr('font-weight','700').attr('font-size','10px');
+      lines.forEach((l, i) => text.append('tspan')
+        .attr('x',0).attr('dy', i === 0 ? `${-(lines.length-1)*0.6}em` : '1.2em').text(l));
+    }
+  });
+
+  // Pattern nodes: colored circle + wrapped name
+  const patEnter = enter.filter(d => d.type === 'pattern');
+  patEnter.append('circle')
+    .attr('r', d => d.r)
+    .attr('fill', d => d.color + '28')
+    .attr('stroke', d => d.color + 'cc')
+    .attr('stroke-width', 1.5)
+    .style('cursor','pointer');
+  patEnter.each(function(d) {
+    const g = d3.select(this);
+    const lines = wordWrap(d.label.replace(/_/g,' '), 14);
+    const text = g.append('text').attr('text-anchor','middle').attr('fill','#cbd5e1').attr('font-size','7.5px').attr('font-weight','500');
+    lines.slice(0,3).forEach((l, i, arr) => text.append('tspan')
+      .attr('x',0).attr('dy', i === 0 ? `${-(arr.length-1)*0.55}em` : '1.1em').text(l));
+  });
+
+  // Property nodes: small circle + label
+  const propEnter = enter.filter(d => d.type === 'property');
+  propEnter.append('circle')
+    .attr('r', d => d.r)
+    .attr('fill', '#0f172a')
+    .attr('stroke', d => d.color + '88')
+    .attr('stroke-width', 1);
+  propEnter.append('text')
+    .attr('x', 11).attr('dominant-baseline','middle')
+    .attr('font-size','8px').attr('fill','#94a3b8')
+    .text(d => d.label);
+
+  nodeSel = enter.merge(nodeSel);
+
+  // Update expanded glow on pattern nodes
+  nodeSel.filter(d => d.type === 'pattern').select('circle')
+    .attr('fill', d => d.expanded ? d.color + '55' : d.color + '28')
+    .attr('stroke', d => d.expanded ? d.color : d.color + 'cc')
+    .attr('stroke-width', d => d.expanded ? 2.5 : 1.5);
+}
+
+// ── Tick ─────────────────────────────────────────────────────────
+simulation.on('tick', () => {
+  linkSel
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  nodeSel.attr('transform', d => `translate(${d.x ?? 0},${d.y ?? 0})`);
+});
+
+// ── Toggle expand/collapse ───────────────────────────────────────
+function togglePattern(patNode) {
+  patNode.expanded = !patNode.expanded;
+
+  if (patNode.expanded) {
+    const pNodes = propNodesByPat[patNode.patId];
+    pNodes.forEach(n => { n.x = patNode.x + (Math.random()-.5)*20; n.y = patNode.y + (Math.random()-.5)*20; n.vx=0; n.vy=0; });
+    const pLinks = pNodes.map(n => ({ source: patNode.id, target: n.id, type: 'prop', catKey: patNode.catKey }));
+    simNodes = [...simNodes, ...pNodes];
+    simLinks = [...simLinks, ...pLinks];
+    showPanel(patNode.data);
+  } else {
+    simNodes = simNodes.filter(n => !(n.type === 'property' && n.patId === patNode.patId));
+    simLinks = simLinks.filter(l => {
+      const src = typeof l.source === 'object' ? l.source.id : l.source;
+      return !(l.type === 'prop' && src === patNode.id);
+    });
+  }
+
+  rebuild();
+  updateStats();
+  document.getElementById('hint').style.opacity = '0';
+}
+
+function rebuild() {
+  simulation.nodes(simNodes);
+  simulation.force('link').links(simLinks);
+  simulation.alpha(0.45).restart();
+  drawLinks();
+  drawNodes();
+}
+
+function updateStats() {
+  const exp = patNodes.filter(n => n.expanded).length;
+  document.getElementById('exp-count').textContent = exp;
+  const props = simNodes.filter(n => n.type === 'property').length;
+  document.getElementById('prop-count').textContent = props;
+}
+
+// ── Panel ────────────────────────────────────────────────────────
+function showPanel(p) {
+  document.getElementById('p-id').textContent = p.id;
+  document.getElementById('p-name').textContent = p.name.replace(/_/g,' ');
+  const catEl = document.getElementById('p-cat');
+  catEl.textContent = CAT[p.cat].label;
+  catEl.style.cssText = `background:${CAT[p.cat].color}22;color:${CAT[p.cat].color};border:1px solid ${CAT[p.cat].color}55;`;
+  document.getElementById('p-prob').textContent = `${Math.round(p.prob*100)}%`;
+  document.getElementById('p-prob').style.color = riskColor(p.prob);
+  document.getElementById('p-conf').textContent = `${Math.round(p.conf*100)}%`;
+  document.getElementById('p-n').textContent = p.n.toLocaleString();
+  document.getElementById('p-carc').textContent = p.carc;
+  document.getElementById('p-action').textContent = p.action;
+  const bar = document.getElementById('p-bar');
+  bar.style.width = `${p.prob*100}%`; bar.style.background = riskColor(p.prob);
+  const propsDiv = document.getElementById('p-props');
+  propsDiv.innerHTML = Object.entries(p.props).map(([k,v]) =>
+    `<div class="pprow"><span>${k.replace(/_/g,' ')}</span><span>${v}</span></div>`).join('');
+  document.getElementById('panel').style.display = 'block';
+}
+
+svg.on('click', () => document.getElementById('panel').style.display = 'none');
+
+// ── Tooltip ──────────────────────────────────────────────────────
+let ttEl = document.createElement('div');
+ttEl.style.cssText = 'position:fixed;z-index:300;background:rgba(15,23,42,0.97);border:1px solid #334155;border-radius:8px;padding:9px 13px;font-size:11.5px;max-width:260px;pointer-events:none;display:none;box-shadow:0 4px 20px rgba(0,0,0,0.6)';
+document.body.appendChild(ttEl);
+
+function showTooltip(e, d) {
+  let html = '';
+  if (d.type === 'category') {
+    const cnt = PATTERNS.filter(p => p.cat === d.catKey).length;
+    html = `<div style="font-weight:700;color:${d.color};margin-bottom:5px">${d.label}</div>
+      <div style="color:#94a3b8">${cnt} denial patterns</div>`;
+  } else if (d.type === 'pattern') {
+    const p = d.data;
+    html = `<div style="font-weight:700;color:#f1f5f9;margin-bottom:5px">${p.id}</div>
+      <div style="color:#64748b;margin-bottom:3px">${d.label}</div>
+      <div style="display:flex;gap:14px;margin-top:5px">
+        <div><div style="color:#64748b;font-size:10px">Risk</div><div style="color:${riskColor(p.prob)};font-weight:700">${Math.round(p.prob*100)}%</div></div>
+        <div><div style="color:#64748b;font-size:10px">Conf</div><div style="color:#e2e8f0;font-weight:600">${Math.round(p.conf*100)}%</div></div>
+        <div><div style="color:#64748b;font-size:10px">CARC</div><div style="color:#818cf8;font-weight:600">${p.carc}</div></div>
+        <div><div style="color:#64748b;font-size:10px">n</div><div style="color:#e2e8f0;font-weight:600">${p.n.toLocaleString()}</div></div>
+      </div>
+      <div style="margin-top:6px;padding-top:5px;border-top:1px solid #1e293b;color:#64748b;font-size:10px">${d.expanded ? '▲ Click to collapse' : '▼ Click to expand properties'}</div>`;
+  } else {
+    html = `<div style="font-weight:600;color:#94a3b8">${d.key.replace(/_/g,' ')}</div>
+      <div style="color:#e2e8f0;font-weight:700;margin-top:2px">${d.val}</div>`;
+  }
+  ttEl.innerHTML = html;
+  ttEl.style.display = 'block';
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  ttEl.style.left = (e.clientX + 14) + 'px';
+  ttEl.style.top  = (e.clientY - 10) + 'px';
+}
+function hideTooltip() { ttEl.style.display = 'none'; }
+
+// ── Controls ─────────────────────────────────────────────────────
+function collapseAll() {
+  patNodes.filter(n => n.expanded).forEach(n => n.expanded = false);
+  simNodes = [...catNodes, ...patNodes];
+  simLinks = PATTERNS.map(p => ({ source:`cat_${p.cat}`, target:`pat_${p.id}`, type:'cat', catKey:p.cat }));
+  rebuild();
+  updateStats();
+  document.getElementById('panel').style.display = 'none';
+}
+
+function expandAll() {
+  patNodes.forEach(n => { if (!n.expanded) n.expanded = true; });
+  simNodes = [...catNodes, ...patNodes];
+  PATTERNS.forEach(p => {
+    const pNodes = propNodesByPat[p.id];
+    const patN = patNodes.find(n => n.patId === p.id);
+    pNodes.forEach(n => { n.x = patN.x + (Math.random()-.5)*15; n.y = patN.y + (Math.random()-.5)*15; n.vx=0; n.vy=0; });
+    simNodes = [...simNodes, ...pNodes];
+  });
+  simLinks = PATTERNS.map(p => ({ source:`cat_${p.cat}`, target:`pat_${p.id}`, type:'cat', catKey:p.cat }));
+  PATTERNS.forEach(p => {
+    propNodesByPat[p.id].forEach(n => {
+      simLinks.push({ source:`pat_${p.id}`, target:n.id, type:'prop', catKey:p.cat });
+    });
+  });
+  rebuild();
+  updateStats();
+}
+
+function resetView() {
+  svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity.translate(W/2, H/2).scale(1).translate(-W/2, -H/2));
+}
+
+// ── Search ───────────────────────────────────────────────────────
+function onSearch(q) {
+  const term = q.toLowerCase().trim();
+  nodeSel.filter(d => d.type === 'pattern')
+    .style('opacity', d => !term || d.data.name.toLowerCase().includes(term) || d.data.id.toLowerCase().includes(term) ? 1 : 0.15);
+}
+
+// ── Initial boot ─────────────────────────────────────────────────
+simulation.nodes(simNodes);
+simulation.force('link').links(simLinks);
+drawLinks();
+drawNodes();
+simulation.alpha(1).restart();
+
+// keyboard shortcut
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { collapseAll(); resetView(); }
+});
+</script>
+</body>
+</html>

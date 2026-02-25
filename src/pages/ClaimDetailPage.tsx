@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import type { RiskLevel, AgentStatus, CorrectiveAction } from '../types';
+import { lookupActionability } from '../data/actionabilityTable';
 import {
   AlertTriangle, CheckCircle, XCircle, Info, ChevronLeft,
   User, Shield, FileText, Code2, DollarSign, Bot,
   Clock, TrendingDown, Zap, ChevronDown, ChevronUp,
-  ExternalLink, Phone, Building, Calendar, Hash, ArrowRight
+  ExternalLink, Phone, Building, Calendar, Hash, ArrowRight,
+  BookOpen, MonitorCheck, Database
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -96,6 +98,98 @@ function ActionStatusButton({ action, claimId }: { action: CorrectiveAction; cla
               {labels[s]}
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActionabilityDetails({ action }: { action: CorrectiveAction }) {
+  const [expanded, setExpanded] = useState(false);
+  const entry = action.actionTableRef ? lookupActionability(action.actionTableRef) : undefined;
+  if (!entry) return null;
+
+  const priorityColor: Record<string, string> = {
+    Critical: 'bg-red-100 text-red-700',
+    High: 'bg-orange-100 text-orange-700',
+    Medium: 'bg-amber-100 text-amber-700',
+    Low: 'bg-slate-100 text-slate-600',
+  };
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+      >
+        <BookOpen size={11} />
+        {expanded ? 'Hide' : 'Show'} Resolution Guide
+        {!expanded && (
+          <span className="ml-1 font-mono text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+            CARC {entry.carcRarc}
+          </span>
+        )}
+        <ChevronDown size={11} className={clsx('transition-transform', expanded && 'rotate-180')} />
+      </button>
+
+      {expanded && (
+        <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3 space-y-3">
+          {/* Header row */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700">{entry.denialType}</span>
+              <span className={clsx('text-xs font-bold px-1.5 py-0.5 rounded', priorityColor[entry.priority])}>
+                {entry.priority}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span className="font-mono font-bold text-blue-700 bg-white border border-blue-200 px-1.5 py-0.5 rounded">
+                CARC {entry.carcRarc}
+              </span>
+              {entry.fieldName837 !== 'N/A' && (
+                <span className="font-mono text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                  837: {entry.fieldName837}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Resolution details grid */}
+          <div className="grid grid-cols-1 gap-2">
+            <div className="flex items-start gap-2">
+              <MonitorCheck size={11} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs font-semibold text-slate-600 mb-0.5">What to Verify</div>
+                <div className="text-xs text-slate-600">{entry.whatToVerify}</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Database size={11} className="text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs font-semibold text-slate-600 mb-0.5">PM System Field</div>
+                <div className="text-xs text-slate-600 font-medium">{entry.pmSystemField}</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <ExternalLink size={11} className="text-violet-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs font-semibold text-slate-600 mb-0.5">Payer / External System</div>
+                <div className="text-xs text-slate-600">{entry.payerExternalField}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Outcome + time */}
+          <div className="flex items-center justify-between pt-2 border-t border-blue-100">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
+              <CheckCircle size={11} />
+              {entry.expectedOutcome}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-slate-500">
+              <Clock size={10} />
+              Est. {entry.timeToResolve}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -805,14 +899,9 @@ export default function ClaimDetailPage() {
                   </div>
                   <p className="text-xs font-semibold text-slate-800 mb-1">{action.action}</p>
                   <p className="text-xs text-slate-500 leading-relaxed mb-2">{action.detail}</p>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1 text-slate-400">
-                      <Clock size={10} /> {action.estimatedTime}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-slate-400">{action.responsible}</span>
-                      <span className="text-emerald-600 font-bold">-{action.riskReduction}%</span>
-                    </div>
+                  <ActionabilityDetails action={action} />
+                  <div className="flex items-center text-xs mt-2">
+                    <span className="text-slate-400">{action.responsible}</span>
                   </div>
                 </div>
               ))}

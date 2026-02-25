@@ -2,7 +2,7 @@ import { useApp } from '../../context/AppContext';
 import type { PageType, PersonaType } from '../../types';
 import {
   LayoutDashboard, FileText, Settings,
-  LogOut, Bot, ChevronRight, Shield, User, Code2
+  LogOut, Bot, ChevronRight, Shield, User, Code2, Activity
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -22,6 +22,7 @@ const personaConfig: Record<PersonaType, { label: string; role: string; color: s
     navItems: [
       { label: "Dashboard", page: "dashboard", icon: <LayoutDashboard size={18} /> },
       { label: "All Claims", page: "claims", icon: <FileText size={18} />, badge: 10 },
+      { label: "Agent Activity", page: "agent-activity", icon: <Activity size={18} /> },
       { label: "Settings", page: "settings", icon: <Settings size={18} /> },
     ],
   },
@@ -33,6 +34,7 @@ const personaConfig: Record<PersonaType, { label: string; role: string; color: s
     navItems: [
       { label: "Dashboard", page: "dashboard", icon: <LayoutDashboard size={18} /> },
       { label: "All Claims", page: "claims", icon: <FileText size={18} />, badge: 10 },
+      { label: "Agent Activity", page: "agent-activity", icon: <Activity size={18} /> },
       { label: "Settings", page: "settings", icon: <Settings size={18} /> },
     ],
   },
@@ -44,6 +46,7 @@ const personaConfig: Record<PersonaType, { label: string; role: string; color: s
     navItems: [
       { label: "Dashboard", page: "dashboard", icon: <LayoutDashboard size={18} /> },
       { label: "All Claims", page: "claims", icon: <FileText size={18} />, badge: 10 },
+      { label: "Agent Activity", page: "agent-activity", icon: <Activity size={18} /> },
       { label: "Settings", page: "settings", icon: <Settings size={18} /> },
     ],
   },

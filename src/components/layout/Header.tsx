@@ -8,7 +8,7 @@ const pageTitles: Record<PageType, string> = {
   claims: 'Claims Management',
   'claim-detail': 'Claim Detail',
   settings: 'Settings & Configuration',
-
+  'agent-activity': 'Agent Orchestration Monitor',
 };
 
 export default function Header() {

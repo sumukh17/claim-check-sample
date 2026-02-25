@@ -1,7 +1,7 @@
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type ClaimStatus = 'new' | 'in_review' | 'ready_to_submit' | 'submitted' | 'approved' | 'denied';
 export type PersonaType = 'denial_analyst' | 'claims_intake' | 'medical_coder';
-export type PageType = 'login' | 'dashboard' | 'claims' | 'claim-detail' | 'settings';
+export type PageType = 'login' | 'dashboard' | 'claims' | 'claim-detail' | 'settings' | 'agent-activity';
 export type AgentStatus = 'pending' | 'processing' | 'completed' | 'error';
 export type ActionStatus = 'pending' | 'in_progress' | 'completed';
 
@@ -79,6 +79,8 @@ export interface CorrectiveAction {
   riskReduction: number;
   status: ActionStatus;
   estimatedTime: string;
+  /** References an entry ID in ACTIONABILITY_TABLE for full resolution details */
+  actionTableRef?: string;
 }
 
 export interface AgentFinding {

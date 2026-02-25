@@ -8,6 +8,7 @@ import MedicalCoderDashboard from './pages/MedicalCoderDashboard';
 import ClaimDetailPage from './pages/ClaimDetailPage';
 import ClaimsListPage from './pages/ClaimsListPage';
 import SettingsPage from './pages/SettingsPage';
+import AgentActivityPage from './pages/AgentActivityPage';
 
 function AppContent() {
   const { persona, currentPage } = useApp();
@@ -29,6 +30,8 @@ function AppContent() {
         return <ClaimDetailPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'agent-activity':
+        return <AgentActivityPage />;
       default:
         return <DenialAnalystDashboard />;
     }
